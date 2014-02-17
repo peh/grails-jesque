@@ -127,7 +127,7 @@ class JesqueService implements DisposableBean {
     {
         log.debug "Starting worker processing queueus: ${queues}"
 
-        Class customWorkerClass = grailsApplication.config.grails.jesque.custom.worker.clazz
+        def customWorkerClass = grailsApplication.config.grails.jesque.custom.worker.clazz
         Worker worker
         if (customWorkerClass && customWorkerClass in GrailsWorkerImpl) {
             worker = customWorkerClass.newInstance(grailsApplication, jesqueConfig, queues, jobTypes)
@@ -137,7 +137,7 @@ class JesqueService implements DisposableBean {
             worker = new GrailsWorkerImpl(grailsApplication, jesqueConfig, queues, jobTypes)
         }
 
-        Class customListenerClass = grailsApplication.config.grails.jesque.custom.listener.clazz
+        def customListenerClass = grailsApplication.config.grails.jesque.custom.listener.clazz
         if (customListenerClass && customListenerClass in WorkerListener) {
             worker.addListener(customListenerClass.newInstance() as WorkerListener)
         } else if (customListenerClass) {
