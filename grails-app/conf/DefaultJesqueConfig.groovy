@@ -6,6 +6,7 @@ grails{
         schedulerThreadActive = true
         delayedJobThreadActive = true
         startPaused = false
+        pruneScheduledJobsOnStartup = false
     }
 }
 

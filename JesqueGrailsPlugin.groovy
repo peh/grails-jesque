@@ -129,13 +129,19 @@ class JesqueGrailsPlugin {
         TriggersConfigBuilder.metaClass.getGrailsApplication = { -> application }
 
         JesqueConfigurationService jesqueConfigurationService = applicationContext.jesqueConfigurationService
+        JesqueService jesqueService = applicationContext.jesqueService
+
+        def jesqueConfigMap = application.config.grails.jesque
+
+        if(jesqueConfigMap.pruneScheduledJobsOnStartup) {
+            log.info "Pruning scheduled jobs"
+            jesqueService.pruneScheduledJobs()
+        }
 
         log.info "Scheduling Jesque Jobs"
         application.jesqueJobClasses.each{ GrailsJesqueJobClass jobClass ->
             jesqueConfigurationService.scheduleJob(jobClass)
         }
-
-        def jesqueConfigMap = application.config.grails.jesque
 
         if( jesqueConfigMap.schedulerThreadActive ) {
             log.info "Launching jesque scheduler thread"
@@ -149,7 +155,6 @@ class JesqueGrailsPlugin {
         }
 
         log.info "Starting jesque workers"
-        JesqueService jesqueService = applicationContext.jesqueService
 
         jesqueConfigurationService.validateConfig(jesqueConfigMap)
 

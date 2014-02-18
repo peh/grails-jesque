@@ -25,6 +25,8 @@ class JesqueService implements DisposableBean {
     def sessionFactory
     def jesqueConfig
     def jesqueDelayedJobService
+    def scheduledJobDaoService
+    def triggerDaoService
     Client jesqueClient
     WorkerInfoDAO workerInfoDao
     List<Worker> workers = Collections.synchronizedList([])
@@ -276,4 +278,13 @@ class JesqueService implements DisposableBean {
     boolean areAllWorkersInClusterPaused() {
         return workerInfoDao.getActiveWorkerCount() == 0
     }
+
+    void pruneScheduledJobs() {
+        log.debug "Pruning schedules jobs"
+        // first, delete all triggers
+        triggerDaoService.deleteAll()
+        // then delete the scheduled jobs
+        scheduledJobDaoService.deleteAll()
+    }
+
 }
