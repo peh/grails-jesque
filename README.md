@@ -195,6 +195,7 @@ Release Notes
 * 0.8.0 - TBD
     * updated to grails version 2.3.5
     * updated to hibernate4
+	* added ability to prune scheduled jobs and triggers on startup
 
 License
 -------
