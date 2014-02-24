@@ -16,6 +16,15 @@ class TriggerDaoService {
         redis.hmset(trigger.redisKey, trigger.toRedisHash())
     }
 
+    void deleteAll() {
+        redisService.withRedis { Jedis redis ->
+            def triggers = redis.keys("${Trigger.REDIS_PREFIX}:*")
+            triggers.each { trigger ->
+                redis.del(trigger)
+            }
+        }
+    }
+
     Trigger findByJobName(String jobName) {
         redisService.withRedis { Jedis redis ->
             findByJobName(redis, jobName)
@@ -25,6 +34,5 @@ class TriggerDaoService {
     Trigger findByJobName(Jedis redis, String jobName) {
         Trigger.fromRedisHash( redis.hgetAll( Trigger.getRedisKeyForJobName(jobName) ) )
     }
-
 
 }

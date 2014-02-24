@@ -27,6 +27,15 @@ class ScheduledJobDaoService {
         redis.del(ScheduledJob.getRedisKeyForName(name))
     }
 
+    void deleteAll() {
+        redisService.withRedis { Jedis redis ->
+            def triggers = redis.keys("${ScheduledJob.REDIS_PREFIX}:*")
+            triggers.each { trigger ->
+                redis.del(trigger)
+            }
+        }
+    }
+
     ScheduledJob findByName(String name) {
         redisService.withRedis { Jedis redis ->
             findByName(redis, name)

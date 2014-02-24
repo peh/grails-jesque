@@ -143,6 +143,17 @@ grails {
 }
 ```
 
+Prune scheduled jobs and triggers on startup
+----
+You can tell the plugin to automatically prune scheduled jobs and triggers on startup by adding the following setting to your Config.groovy:
+```xml
+grails {
+    jesque {
+		pruneScheduledJobsOnStartup = true
+	}
+}
+```
+
 Roadmap
 ----
 * Ability to execute methods on services without creating a job object
@@ -184,6 +195,7 @@ Release Notes
 * 0.8.0 - TBD
     * updated to grails version 2.3.5
     * updated to hibernate4
+	* added ability to prune scheduled jobs and triggers on startup
 
 License
 -------
