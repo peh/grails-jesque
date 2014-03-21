@@ -146,6 +146,13 @@ class JesqueService implements DisposableBean {
             log.warn('The specified custom listener class does not implement WorkerListener. Ignoring it')
         }
 
+        def customJobExceptionHandler = grailsApplication.config.grails.jesque.custom.jobExceptionHandler.clazz
+        if (customJobExceptionHandler && customJobExceptionHandler in JobExceptionHandler) {
+            worker.jobExceptionHandler = customJobExceptionHandler.newInstance() as JobExceptionHandler
+        } else if (customJobExceptionHandler ) {
+            log.warn('The specified custom job exception handler class does not implement JobExceptionHandler. Ignoring it')
+        }
+
         if (exceptionHandler)
             worker.exceptionHandler = exceptionHandler
 
