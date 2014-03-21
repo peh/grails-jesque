@@ -41,7 +41,8 @@ class JesqueGrailsPlugin {
     def developers = [
             [name: "Michael Cameron", email: "michael.e.cameron@gmail.com"],
             [name: "Ted Naleid", email: "contact@naleid.com"],
-            [name: "Philipp Eschenbach", email: "peh@kunstsysteme.com"]]
+            [name: "Philipp Eschenbach", email: "peh@kunstsysteme.com"],
+            [name: "Florian Langenhahn", email: "fln@kunstsysteme.com"]]
     def documentation = "https://github.com/michaelcameron/grails-jesque"
     def scm = [url: "https://github.com/michaelcameron/grails-jesque"]
 
