@@ -5,7 +5,6 @@ plugin.xml
 *.iws
 *.iml
 *.ipr
-*.zip
 stacktrace.log
 
 out/
