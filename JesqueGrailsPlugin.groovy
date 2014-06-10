@@ -21,8 +21,8 @@ import org.codehaus.groovy.grails.commons.GrailsApplication
 
 class JesqueGrailsPlugin {
 
-    def version = "0.8.4"
-    def grailsVersion = "2.4.0 > *"
+    def version = "0.9-SNAPSHOT"
+    def grailsVersion = "2.0.0 > *"
     def dependsOn = [redis: "1.3.2 > *"]
     def pluginExcludes = [
             "grails-app/views/**",

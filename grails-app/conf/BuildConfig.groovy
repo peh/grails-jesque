@@ -31,26 +31,13 @@ grails.project.dependency.resolution = {
         compile('commons-pool:commons-pool:1.6')
 
         compile('net.greghaines:jesque:1.3.1')
-        compile('redis.clients:jedis:2.2.1')
-        compile('joda-time:joda-time:2.1')
-
-        test("org.spockframework:spock-grails-support:0.7-groovy-2.0") {
-            export = false
-        }
     }
     plugins {
-        compile ":redis:1.4"
-        build(':release:2.2.1', ':rest-client-builder:1.0.3') {
-            export = false
-        }
-        test(":spock:0.7") {
-            export = false
-            exclude "spock-grails-support"
-        }
-        compile(":hibernate4:4.1.11.2") {
+        compile ":redis:1.5.5"
+        build(":release:3.0.1", ":rest-client-builder:1.0.3") {
             export = false
         }
 
-        compile ":grails-joda-time:1.5"
+        compile ":joda-time:1.5"
     }
 }
