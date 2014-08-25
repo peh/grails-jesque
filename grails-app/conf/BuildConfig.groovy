@@ -29,6 +29,7 @@ grails.project.dependency.resolution = {
     dependencies {
 
         compile('commons-pool:commons-pool:1.6')
+        compile('commons-io:commons-io:2.4')
 
         compile('net.greghaines:jesque:1.3.1')
     }
