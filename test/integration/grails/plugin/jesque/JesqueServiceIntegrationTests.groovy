@@ -16,7 +16,8 @@ class JesqueServiceIntegrationTests extends GrailsUnitTestCase {
     def jesqueService
     QueueInfoDAO queueInfoDao
     FailureDAO failureDao
-    RedisService redisService
+    //RedisService redisService
+    def redisService
 
     void setUp() {
         redisService.flushDB()
