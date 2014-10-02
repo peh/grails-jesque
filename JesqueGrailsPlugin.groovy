@@ -1,5 +1,7 @@
 import grails.plugin.jesque.GrailsJesqueJobClass
 import grails.plugin.jesque.JesqueJobArtefactHandler
+import grails.plugin.jesque.QueueConfiguration
+import grails.util.Environment
 import net.greghaines.jesque.Config
 import net.greghaines.jesque.ConfigBuilder
 import net.greghaines.jesque.admin.AdminClientImpl
@@ -12,7 +14,6 @@ import org.springframework.beans.factory.config.MethodInvokingFactoryBean
 import grails.plugin.jesque.JesqueService
 import grails.plugin.jesque.JesqueSchedulerThreadService
 import grails.plugin.jesque.JesqueConfigurationService
-import grails.util.GrailsUtil
 import org.codehaus.groovy.grails.commons.spring.GrailsApplicationContext
 import org.springframework.context.ApplicationContext
 import grails.plugin.jesque.TriggersConfigBuilder
@@ -21,7 +22,7 @@ import org.codehaus.groovy.grails.commons.GrailsApplication
 
 class JesqueGrailsPlugin {
 
-    def version = "0.9-SNAPSHOT"
+    def version = "0.9.1-SNAPSHOT"
     def grailsVersion = "2.0.0 > *"
     def dependsOn = [redis: "1.3.2 > *"]
     def pluginExcludes = [
@@ -59,6 +60,7 @@ class JesqueGrailsPlugin {
     }
 
     def doWithSpring = {
+
         log.info "Merging in default jesque config"
         loadJesqueConfig(application.config.grails.jesque)
 
@@ -98,7 +100,7 @@ class JesqueGrailsPlugin {
         workerInfoDao(WorkerInfoDAORedisImpl, ref('jesqueConfig'), ref('redisPool'))
 
         log.info "Creating jesque job beans"
-        application.jesqueJobClasses.each {jobClass ->
+        application.jesqueJobClasses.each { GrailsJesqueJobClass jobClass ->
             configureJobBeans.delegate = delegate
             configureJobBeans(jobClass)
         }
@@ -127,12 +129,17 @@ class JesqueGrailsPlugin {
         if(!isJesqueEnabled(application))
             return
 
+        log.info "adding jobs to queue configuration"
+        application.jesqueJobClasses.each{ GrailsJesqueJobClass jobClass ->
+            QueueConfiguration.addJob(jobClass.getClazz())
+        }
+
         TriggersConfigBuilder.metaClass.getGrailsApplication = { -> application }
 
         JesqueConfigurationService jesqueConfigurationService = applicationContext.jesqueConfigurationService
         JesqueService jesqueService = applicationContext.jesqueService
 
-        def jesqueConfigMap = application.config.grails.jesque
+        ConfigObject jesqueConfigMap = application.config.grails.jesque
 
         if(jesqueConfigMap.pruneScheduledJobsOnStartup) {
             log.info "Pruning scheduled jobs"
@@ -214,7 +221,7 @@ class JesqueGrailsPlugin {
         GroovyClassLoader classLoader = new GroovyClassLoader(getClass().classLoader)
 
         // merging default jesque config into main application config
-        def defaultConfig = new ConfigSlurper(GrailsUtil.environment).parse(classLoader.loadClass('DefaultJesqueConfig'))
+        def defaultConfig = new ConfigSlurper(Environment.getCurrent().toString()).parse(classLoader.loadClass('DefaultJesqueConfig'))
 
         //may look weird, but we must merge the user config into default first so the user overrides default,
         // then merge back into the main to bring default values in that were not overridden
@@ -224,7 +231,7 @@ class JesqueGrailsPlugin {
         return jesqueConfig
     }
 
-    private Boolean isJesqueEnabled(GrailsApplication application) {
+    private static Boolean isJesqueEnabled(GrailsApplication application) {
         def jesqueConfigMap = application.config.grails.jesque
 
         Boolean isJesqueEnabled = true

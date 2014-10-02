@@ -203,14 +203,21 @@ Release Notes
 * 0.6.2 - release 2013-06-13
     * Add ability to specify Redis DB
 * 0.7.0 - release 2013-06-13
-	* Added priorityEnqueue methods to JesqueService
-	* Added ability to define a custom WorkerListener
-	* Added ability to define a custom WorkerImpl
+    * Added priorityEnqueue methods to JesqueService
+    * Added ability to define a custom WorkerListener
+    * Added ability to define a custom WorkerImpl
 * 0.8.0 - TBD
     * updated to grails version 2.3.5
     * updated to hibernate4
-	* added ability to prune scheduled jobs and triggers on startup
-	* added ability to specify a custom job exception handler
+    * added ability to prune scheduled jobs and triggers on startup
+    * added ability to specify a custom job exception handler
+* 0.9.1 - TBD
+    * updated to grails version 2.4.3
+    * updated to jesque 2.0.0
+    * removed hibernate dependency
+    * added support for java 8
+    * added skipPersistence and autoFlush config parameters
+    * added preExecute method to run actions just right before a job is executed
 
 License
 -------
