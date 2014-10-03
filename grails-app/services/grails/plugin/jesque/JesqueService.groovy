@@ -107,12 +107,12 @@ class JesqueService implements DisposableBean {
     }
 
 
-    Worker startWorker(String queueName, JobFactory jobFactory, ExceptionHandler exceptionHandler = null,
+    Worker startWorker(String queueName, JobFactory jobFactory = new GrailsJobFactory(grailsApplication), ExceptionHandler exceptionHandler = null,
                        boolean paused = false) {
         startWorker([queueName], jobFactory, exceptionHandler, paused)
     }
 
-    Worker startWorker(List<String> queues, JobFactory jobFactory, ExceptionHandler exceptionHandler = null,
+    Worker startWorker(List<String> queues, JobFactory jobFactory = new GrailsJobFactory(grailsApplication), ExceptionHandler exceptionHandler = null,
                        boolean paused = false) {
         log.info "Starting worker processing queueus: ${queues}"
 
@@ -133,11 +133,11 @@ class JesqueService implements DisposableBean {
             log.warn('The specified custom listener class does not implement WorkerListener. Ignoring it')
         }
 
-        def customJobExceptionHandler = grailsApplication.config.grails.jesque.custom.jobExceptionHandler.clazz
-        if (customJobExceptionHandler && customJobExceptionHandler in JobExceptionHandler) {
-            worker.jobExceptionHandler = customJobExceptionHandler.newInstance() as JobExceptionHandler
-        } else if (customJobExceptionHandler) {
-            log.warn('The specified custom job exception handler class does not implement JobExceptionHandler. Ignoring it')
+        def customJobThrowableHandler = grailsApplication.config.grails.jesque.custom.jobThrowableHandler.clazz
+        if (customJobThrowableHandler && customJobThrowableHandler in JobThrowableHandler) {
+            worker.jobThrowableHandler = customJobThrowableHandler.newInstance() as JobThrowableHandler
+        } else if (customJobThrowableHandler) {
+            log.warn('The specified custom job throwable handler class does not implement JobThrowableHandler. Ignoring it')
         }
 
         if (exceptionHandler)

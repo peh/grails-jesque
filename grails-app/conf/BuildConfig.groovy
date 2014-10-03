@@ -30,7 +30,7 @@ grails.project.dependency.resolution = {
         compile('commons-pool:commons-pool:1.6')
         compile('commons-io:commons-io:2.4')
 
-        compile('net.greghaines:jesque:2.0.0')
+        compile('net.greghaines:jesque:2.0.1')
 
         test("org.spockframework:spock-grails-support:0.7-groovy-2.0") {
             export = false

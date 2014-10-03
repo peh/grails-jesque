@@ -12,7 +12,7 @@ import static net.greghaines.jesque.worker.WorkerEvent.JOB_PROCESS
 
 class GrailsWorkerImpl extends WorkerImpl {
 
-    JobExceptionHandler jobExceptionHandler
+    JobThrowableHandler jobThrowableHandler
 
     public GrailsWorkerImpl(
             final Config config,
@@ -31,11 +31,8 @@ class GrailsWorkerImpl extends WorkerImpl {
             preExecute()
             // we call our own execute implementation as we call perform() on the job (instead of Runnable#call())
             execute(job, curQueue, instance, job.args)
-        } catch (Throwable e) {
-            def ex
-            if (e instanceof Exception) ex = e
-            else ex = new Exception("ERROR: $e.message")
-            failure(ex, job, curQueue)
+        } catch (Throwable t) {
+            failure(t, job, curQueue)
         }
     }
 
@@ -47,9 +44,9 @@ class GrailsWorkerImpl extends WorkerImpl {
      * @param curQueue the current queue
      */
     @Override
-    protected void failure(final Exception ex, final Job job, final String curQueue) {
-        jobExceptionHandler?.onException(ex, job, curQueue)
-        super.failure(ex, job, curQueue)
+    protected void failure(final Throwable t, final Job job, final String curQueue) {
+        jobThrowableHandler?.onThrowable(t, job, curQueue)
+        super.failure(t, job, curQueue)
     }
 
     protected void execute(final Job job, final String curQueue, final Object instance, final Object[] args) {
