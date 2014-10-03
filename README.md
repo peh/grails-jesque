@@ -49,7 +49,7 @@ class SomeOtherClass {
 Workers can be started manually by calling
 
 ```groovy
-    jesqueService.startWorker( 'myQueueName', BackgroundJob.simpleName, BackgroundJob )
+    jesqueService.startWorker( 'myQueueName' )
 ```
 
 or automatically upon start-up with the following config
@@ -61,7 +61,6 @@ grails {
             someNameForYourWorkerPool {
                 workers = 3 //defaults to 1
                 queueNames = 'myQueueName' //or a list
-                jobTypes = [(BackgroundJob.simpleName):BackgroundJob]
             }
         }
     }
@@ -81,7 +80,7 @@ grails {
 
 Jobs
 ----
-Jobs should be placed in grails-app/jobs similar to the [Quartz](http://grails.org/plugin/quartz) plugin.
+Jobs must be placed in grails-app/jobs similar to the [Quartz](http://grails.org/plugin/quartz) plugin.
 However, to not clash with quartz, and to retain similarties with resque, the method to execute must be called perform.
 
 You can run the script create-jesque-job to create a shell of a job for you automatically.  The
@@ -169,6 +168,14 @@ grails {
 }
 ```
 
+Enable runtime monitoring
+----
+Runtime monitoring is automatically enabled for all workers.
+You can disable monitoring with the following config parameter:
+```xml
+grails.jesque.monitoring = false
+```
+
 Roadmap
 ----
 * Ability to execute methods on services without creating a job object
@@ -211,13 +218,19 @@ Release Notes
     * updated to hibernate4
     * added ability to prune scheduled jobs and triggers on startup
     * added ability to specify a custom job exception handler
-* 0.9.1 - TBD
+* 0.9.1-SNAPSHOT - 2014-10-02
     * updated to grails version 2.4.3
     * updated to jesque 2.0.0
     * removed hibernate dependency
     * added support for java 8
     * added skipPersistence and autoFlush config parameters
     * added preExecute method to run actions just right before a job is executed
+* 0.9.2-SNAPSHOT - 2014-10-06
+    * updated to jesque 2.0.1
+    * added option to add a monitor result to redis
+* 0.9.3-SNAPSHOT
+    * use delayed enqueue mechanism from jesque
+    * todo: make tests work
 
 License
 -------
