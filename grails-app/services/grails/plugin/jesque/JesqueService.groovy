@@ -15,6 +15,7 @@ import net.greghaines.jesque.worker.WorkerListener
 import org.codehaus.groovy.grails.support.PersistenceContextInterceptor
 import org.joda.time.DateTime
 import org.springframework.beans.factory.DisposableBean
+import redis.clients.jedis.Jedis
 
 class JesqueService implements DisposableBean {
 
@@ -27,6 +28,7 @@ class JesqueService implements DisposableBean {
     def jesqueDelayedJobService
     def scheduledJobDaoService
     def triggerDaoService
+    def redisService
     PersistenceContextInterceptor persistenceInterceptor
     Client jesqueClient
     WorkerInfoDAO workerInfoDao
@@ -160,6 +162,13 @@ class JesqueService implements DisposableBean {
             worker.workerEventEmitter.addListener(workerPersistenceListener, WorkerEvent.JOB_EXECUTE, WorkerEvent.JOB_SUCCESS, WorkerEvent.JOB_FAILURE)
         }
 
+        boolean monitoring = grailsApplication.config.grails.jesque.monitoring as boolean
+        if (monitoring) {
+            log.debug("Enabling Monitoring for all Jobs")
+            def workerMonitorListener = new WorkerMonitorListener(this)
+            worker.workerEventEmitter.addListener(workerMonitorListener, WorkerEvent.JOB_EXECUTE, WorkerEvent.JOB_SUCCESS, WorkerEvent.JOB_FAILURE)
+        }
+
         def workerLifeCycleListener = new WorkerLifecycleListener(this)
         worker.workerEventEmitter.addListener(workerLifeCycleListener, WorkerEvent.WORKER_STOP)
 
@@ -281,6 +290,47 @@ class JesqueService implements DisposableBean {
         triggerDaoService.deleteAll()
         // then delete the scheduled jobs
         scheduledJobDaoService.deleteAll()
+    }
+
+    /**
+     * Adds a monitor result to redis.
+     *
+     * @param name the job name
+     * @param start the time when the execution of the job started
+     * @param end the time when the execution of the job ended
+     * @param args the job arguments
+     * @param success true if the job execution was successful, false otherwise
+     * @return
+     */
+    void addMonitorResult(def name, long start, long end, def args = null, boolean success = true) {
+        def obj = [:]
+        obj.start = start
+        obj.end = end
+        obj.runtime = end - start
+        obj.args = args
+        obj.name = name
+        obj.success = success
+        redisService.withRedis { Jedis jedis ->
+            long next = jedis.incr(DONE_COUNT_KEY)
+            String jobKey = getDoneKey(next)
+            obj.id = next
+            obj.each { key, value ->
+                jedis.hset(jobKey, key, "$value")
+            }
+            jedis.sadd(CLASSES_KEY, "$name")
+            jedis.lpush(getClassesDoneKey(name), "$next")
+        }
+    }
+
+    public static final String CLASSES_KEY = 'jobs:done:classes'
+    public static final String DONE_COUNT_KEY = 'jobs:done:count'
+
+    static String getClassesDoneKey(String name) {
+        "jobs:done:classes:$name"
+    }
+
+    static String getDoneKey(long id) {
+        "jobs:done:${id}"
     }
 
 }

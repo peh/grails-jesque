@@ -9,6 +9,7 @@ grails{
         pruneScheduledJobsOnStartup = false
         autoFlush = true
         skipPersistence = false
+        monitoring = false
     }
 }
 
