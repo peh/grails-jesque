@@ -2,9 +2,11 @@ package grails.plugin.jesque
 
 import grails.plugin.jesque.test.RedisAutoWireJob
 import grails.plugin.redis.RedisService
-import grails.plugin.spock.IntegrationSpec
+import grails.test.spock.IntegrationSpec
 import net.greghaines.jesque.meta.dao.FailureDAO
 import net.greghaines.jesque.meta.dao.QueueInfoDAO
+import net.greghaines.jesque.worker.JobFactory
+import net.greghaines.jesque.worker.ReflectiveJobFactory
 
 class JesqueServiceInjectionSpec extends IntegrationSpec {
 
@@ -28,10 +30,11 @@ class JesqueServiceInjectionSpec extends IntegrationSpec {
         def existingFailureCount = failureDao.count
         redisService.hello = ""
         redisService.worked = ""
+        JobFactory jobFactory = new ReflectiveJobFactory()
 
         when:
         jesqueService.enqueue(queueName, RedisAutoWireJob.simpleName)
-        jesqueService.withWorker(queueName, RedisAutoWireJob.simpleName, RedisAutoWireJob) {
+        jesqueService.withWorker(queueName, jobFactory) {
             sleep(2000)
         }
 

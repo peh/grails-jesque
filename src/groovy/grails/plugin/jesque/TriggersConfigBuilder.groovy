@@ -83,7 +83,7 @@ public class TriggersConfigBuilder extends BuilderSupport {
 
         if(triggerAttributes[GrailsJesqueJobClassProperty.TIMEZONE]) {
             try {
-                DateTimeZone.forID(triggerAttributes[GrailsJesqueJobClassProperty.TIMEZONE])
+                DateTimeZone.forID(triggerAttributes[GrailsJesqueJobClassProperty.TIMEZONE] as String)
             } catch(Exception exception) {
                 throw new Exception("Invalid ${GrailsJesqueJobClassProperty.TIMEZONE} on cron trigger", exception)
             }

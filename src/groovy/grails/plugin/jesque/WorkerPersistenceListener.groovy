@@ -19,7 +19,7 @@ class WorkerPersistenceListener implements WorkerListener {
         this.autoFlush = autoFlush
     }
 
-    void onEvent(WorkerEvent workerEvent, Worker worker, String s, Job job, Object o, Object o1, Exception e) {
+    void onEvent(WorkerEvent workerEvent, Worker worker, String s, Job job, Object o, Object o1, Throwable t) {
         log.debug("Processing worker event ${workerEvent.name()}")
         if (workerEvent == WorkerEvent.JOB_EXECUTE) {
             initiatied = bindSession()

@@ -3,15 +3,19 @@ package grails.plugin.jesque
 import org.joda.time.DateTimeZone
 
 class JesqueConfigurationService {
+
     def grailsApplication
     def jesqueSchedulerService
 
-    Boolean validateConfig(ConfigObject jesqueConfigMap) {
+    boolean validateConfig(ConfigObject jesqueConfigMap) {
         jesqueConfigMap.workers.each{ String workerPoolName, ConfigObject value ->
             if( value.workers && !(value.workers instanceof Integer)  )
                 throw new Exception("Invalid worker count ${value.workers} for pool $workerPoolName, expecting Integer")
 
             def queueNames = value.queueNames
+            if (queueNames instanceof Closure)
+                queueNames = queueNames.call()
+
             if( queueNames && !((queueNames instanceof String) || (queueNames instanceof List<String>)) )
                 throw new Exception("Invalid queueNames ($queueNames) for pool $workerPoolName, must be a String or a List<String>")
 
@@ -69,6 +73,8 @@ class JesqueConfigurationService {
     }
 
     void scheduleJob(GrailsJesqueJobClass jobClass) {
+        if (!jobClass.triggers) return
+
         log.info("Scheduling ${jobClass.fullName}")
 
         jobClass.triggers.each {key, trigger ->

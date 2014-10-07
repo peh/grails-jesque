@@ -7,6 +7,9 @@ grails{
         delayedJobThreadActive = true
         startPaused = false
         pruneScheduledJobsOnStartup = false
+        autoFlush = true
+        skipPersistence = false
+        monitoring = false
     }
 }
 

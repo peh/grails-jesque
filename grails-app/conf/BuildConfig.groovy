@@ -27,18 +27,32 @@ grails.project.dependency.resolution = {
         mavenRepo "http://m2repo.spockframework.org/snapshots/"
     }
     dependencies {
-
         compile('commons-pool:commons-pool:1.6')
         compile('commons-io:commons-io:2.4')
 
-        compile('net.greghaines:jesque:1.3.1')
+        compile('net.greghaines:jesque:2.0.1')
+
+        test("org.spockframework:spock-grails-support:0.7-groovy-2.0") {
+            export = false
+        }
+        test("org.springframework:spring-expression:4.1.0.RELEASE") {
+            export = false
+        }
+        test("org.springframework:spring-aop:4.1.0.RELEASE") {
+            export = false
+        }
     }
     plugins {
         compile ":redis:1.5.5"
-        build(":release:3.0.1", ":rest-client-builder:1.0.3") {
+        compile ":joda-time:1.5"
+        
+	build(":release:3.0.1", ":rest-client-builder:1.0.3") {
             export = false
         }
-
-        compile ":joda-time:1.5"
+       
+	test(":spock:0.7") {
+            export = false
+            exclude "spock-grails-support"
+        }
     }
 }

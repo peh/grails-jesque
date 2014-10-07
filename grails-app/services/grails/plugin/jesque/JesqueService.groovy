@@ -8,17 +8,18 @@ import net.greghaines.jesque.client.Client
 import net.greghaines.jesque.meta.WorkerInfo
 import net.greghaines.jesque.meta.dao.WorkerInfoDAO
 import net.greghaines.jesque.worker.ExceptionHandler
+import net.greghaines.jesque.worker.JobFactory
 import net.greghaines.jesque.worker.Worker
 import net.greghaines.jesque.worker.WorkerEvent
 import net.greghaines.jesque.worker.WorkerListener
 import org.codehaus.groovy.grails.support.PersistenceContextInterceptor
 import org.joda.time.DateTime
 import org.springframework.beans.factory.DisposableBean
+import redis.clients.jedis.Jedis
 
 class JesqueService implements DisposableBean {
 
     static transactional = false
-    static scope = 'singleton'
 
     static final int DEFAULT_WORKER_POOL_SIZE = 3
 
@@ -27,6 +28,7 @@ class JesqueService implements DisposableBean {
     def jesqueDelayedJobService
     def scheduledJobDaoService
     def triggerDaoService
+    def redisService
     PersistenceContextInterceptor persistenceInterceptor
     Client jesqueClient
     WorkerInfoDAO workerInfoDao
@@ -107,47 +109,37 @@ class JesqueService implements DisposableBean {
     }
 
 
-    Worker startWorker(String queueName, String jobName, Class jobClass, ExceptionHandler exceptionHandler = null,
+    Worker startWorker(String queueName, JobFactory jobFactory = new GrailsJobFactory(grailsApplication), ExceptionHandler exceptionHandler = null,
                        boolean paused = false) {
-        startWorker([queueName], [(jobName): jobClass], exceptionHandler, paused)
+        startWorker([queueName], jobFactory, exceptionHandler, paused)
     }
 
-    Worker startWorker(List queueName, String jobName, Class jobClass, ExceptionHandler exceptionHandler = null,
+    Worker startWorker(List<String> queues, JobFactory jobFactory = new GrailsJobFactory(grailsApplication), ExceptionHandler exceptionHandler = null,
                        boolean paused = false) {
-        startWorker(queueName, [(jobName): jobClass], exceptionHandler, paused)
-    }
-
-    Worker startWorker(String queueName, Map<String, Class> jobTypes, ExceptionHandler exceptionHandler = null,
-                       boolean paused = false) {
-        startWorker([queueName], jobTypes, exceptionHandler, paused)
-    }
-
-    Worker startWorker(List<String> queues, Map<String, Class> jobTypes, ExceptionHandler exceptionHandler = null,
-                       boolean paused = false) {
-        log.debug "Starting worker processing queueus: ${queues}"
+        log.info "Starting worker processing queueus: ${queues}"
 
         def customWorkerClass = grailsApplication.config.grails.jesque.custom.worker.clazz
         Worker worker
         if (customWorkerClass && customWorkerClass in GrailsWorkerImpl) {
-            worker = customWorkerClass.newInstance(grailsApplication, jesqueConfig, queues, jobTypes)
+            worker = customWorkerClass.newInstance(jesqueConfig, queues, jobFactory)
         } else {
             if (customWorkerClass)
                 log.warn('The specified custom worker class does not extend GrailsWorkerImpl. Ignoring it')
-            worker = new GrailsWorkerImpl(grailsApplication, jesqueConfig, queues, jobTypes)
+            worker = new GrailsWorkerImpl(jesqueConfig, queues, jobFactory)
         }
 
         def customListenerClass = grailsApplication.config.grails.jesque.custom.listener.clazz
         if (customListenerClass && customListenerClass in WorkerListener) {
-            worker.addListener(customListenerClass.newInstance() as WorkerListener)
+            worker.workerEventEmitter.addListener(customListenerClass.newInstance() as WorkerListener)
         } else if (customListenerClass) {
             log.warn('The specified custom listener class does not implement WorkerListener. Ignoring it')
         }
 
-        def customJobExceptionHandler = grailsApplication.config.grails.jesque.custom.jobExceptionHandler.clazz
-        if (customJobExceptionHandler && customJobExceptionHandler in JobExceptionHandler) {
-            worker.jobExceptionHandler = customJobExceptionHandler.newInstance() as JobExceptionHandler
-        } else if (customJobExceptionHandler) {
-            log.warn('The specified custom job exception handler class does not implement JobExceptionHandler. Ignoring it')
+        def customJobThrowableHandler = grailsApplication.config.grails.jesque.custom.jobThrowableHandler.clazz
+        if (customJobThrowableHandler && customJobThrowableHandler in JobThrowableHandler) {
+            worker.jobThrowableHandler = customJobThrowableHandler.newInstance() as JobThrowableHandler
+        } else if (customJobThrowableHandler) {
+            log.warn('The specified custom job throwable handler class does not implement JobThrowableHandler. Ignoring it')
         }
 
         if (exceptionHandler)
@@ -164,14 +156,21 @@ class JesqueService implements DisposableBean {
         admin.setWorker(worker)
 
         if (!grailsApplication.config.grails.jesque.skipPersistence) {
-            log.info("Enabling Persistence for all Jobs")
+            log.debug("Enabling Persistence for all Jobs")
             def autoFlush = grailsApplication.config.grails.jesque.autoFlush ?: true
             def workerPersistenceListener = new WorkerPersistenceListener(persistenceInterceptor, autoFlush)
-            worker.addListener(workerPersistenceListener, WorkerEvent.JOB_EXECUTE, WorkerEvent.JOB_SUCCESS, WorkerEvent.JOB_FAILURE)
+            worker.workerEventEmitter.addListener(workerPersistenceListener, WorkerEvent.JOB_EXECUTE, WorkerEvent.JOB_SUCCESS, WorkerEvent.JOB_FAILURE)
+        }
+
+        boolean monitoring = grailsApplication.config.grails.jesque.monitoring as boolean
+        if (monitoring) {
+            log.debug("Enabling Monitoring for all Jobs")
+            def workerMonitorListener = new WorkerMonitorListener(this)
+            worker.workerEventEmitter.addListener(workerMonitorListener, WorkerEvent.JOB_EXECUTE, WorkerEvent.JOB_SUCCESS, WorkerEvent.JOB_FAILURE)
         }
 
         def workerLifeCycleListener = new WorkerLifecycleListener(this)
-        worker.addListener(workerLifeCycleListener, WorkerEvent.WORKER_STOP)
+        worker.workerEventEmitter.addListener(workerLifeCycleListener, WorkerEvent.WORKER_STOP)
 
         def workerThread = new Thread(worker)
         workerThread.start()
@@ -197,8 +196,8 @@ class JesqueService implements DisposableBean {
         }
     }
 
-    void withWorker(String queueName, String jobName, Class jobClassName, Closure closure) {
-        def worker = startWorker(queueName, jobName, jobClassName)
+    void withWorker(String queueName, JobFactory jobFactory, Closure closure) {
+        def worker = startWorker(queueName, jobFactory)
         try {
             closure()
         } finally {
@@ -207,24 +206,22 @@ class JesqueService implements DisposableBean {
     }
 
     void startWorkersFromConfig(ConfigObject jesqueConfigMap) {
-
         def startPaused = jesqueConfigMap.startPaused as boolean ?: false
 
         jesqueConfigMap.workers.each { String workerPoolName, value ->
-            log.info "Starting workers for pool $workerPoolName"
+            int workers = value.workers ? value.workers.toInteger() : DEFAULT_WORKER_POOL_SIZE
 
-            def workers = value.workers ? value.workers.toInteger() : DEFAULT_WORKER_POOL_SIZE
+            if (workers < 1) return
+
+            log.info "Starting $workers workers for pool $workerPoolName"
+
             def queueNames = value.queueNames
-            def jobTypes = value.jobTypes
-
-            if (!((queueNames instanceof String) || (queueNames instanceof List<String>)))
-                throw new Exception("Invalid queueNames for pool $workerPoolName, expecting must be a String or a List<String>.")
-
-            if (!(jobTypes instanceof Map))
-                throw new Exception("Invalid jobTypes (${jobTypes}) for pool $workerPoolName, must be a map")
+            if (queueNames instanceof Closure)
+                queueNames = queueNames.call()
+            JobFactory jobFactory = new GrailsJobFactory(grailsApplication)
 
             workers.times {
-                startWorker(queueNames, jobTypes, null, startPaused)
+                startWorker(queueNames, jobFactory, null, startPaused)
             }
         }
     }
@@ -293,6 +290,47 @@ class JesqueService implements DisposableBean {
         triggerDaoService.deleteAll()
         // then delete the scheduled jobs
         scheduledJobDaoService.deleteAll()
+    }
+
+    /**
+     * Adds a monitor result to redis.
+     *
+     * @param name the job name
+     * @param start the time when the execution of the job started
+     * @param end the time when the execution of the job ended
+     * @param args the job arguments
+     * @param success true if the job execution was successful, false otherwise
+     * @return
+     */
+    void addMonitorResult(def name, long start, long end, def args = null, boolean success = true) {
+        def obj = [:]
+        obj.start = start
+        obj.end = end
+        obj.runtime = end - start
+        obj.args = args
+        obj.name = name
+        obj.success = success
+        redisService.withRedis { Jedis jedis ->
+            long next = jedis.incr(DONE_COUNT_KEY)
+            String jobKey = getDoneKey(next)
+            obj.id = next
+            obj.each { key, value ->
+                jedis.hset(jobKey, key, "$value")
+            }
+            jedis.sadd(CLASSES_KEY, "$name")
+            jedis.lpush(getClassesDoneKey(name), "$next")
+        }
+    }
+
+    public static final String CLASSES_KEY = 'jobs:done:classes'
+    public static final String DONE_COUNT_KEY = 'jobs:done:count'
+
+    static String getClassesDoneKey(String name) {
+        "jobs:done:classes:$name"
+    }
+
+    static String getDoneKey(long id) {
+        "jobs:done:${id}"
     }
 
 }
