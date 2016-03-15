@@ -4,21 +4,24 @@ import net.greghaines.jesque.Config
 import net.greghaines.jesque.Job
 import net.greghaines.jesque.worker.JobFactory
 import net.greghaines.jesque.worker.WorkerAware
-import net.greghaines.jesque.worker.WorkerImpl
+import net.greghaines.jesque.worker.WorkerJedisPoolImpl
+import redis.clients.jedis.Jedis
+import redis.clients.util.Pool
 
 import static net.greghaines.jesque.utils.ResqueConstants.WORKER
 import static net.greghaines.jesque.worker.WorkerEvent.JOB_EXECUTE
 import static net.greghaines.jesque.worker.WorkerEvent.JOB_PROCESS
 
-class GrailsWorkerImpl extends WorkerImpl {
+class GrailsWorkerImpl extends WorkerJedisPoolImpl {
 
     JobThrowableHandler jobThrowableHandler
 
     public GrailsWorkerImpl(
             final Config config,
             final Collection<String> queues,
-            final JobFactory jobFactory) {
-        super(config, queues, jobFactory)
+            final JobFactory jobFactory,
+            final Pool<Jedis> jedisPool) {
+        super(config, queues, jobFactory, jedisPool)
     }
 
     @Override
@@ -53,15 +56,25 @@ class GrailsWorkerImpl extends WorkerImpl {
         if (instance instanceof WorkerAware) {
             ((WorkerAware) instance).setWorker(this);
         }
+        doWithJedis { Jedis jedis ->
+            jedis.set(key(WORKER, this.name), statusMsg(curQueue, job))
+            try {
+                final Object result
+                this.listenerDelegate.fireEvent(JOB_EXECUTE, this, curQueue, job, instance, null, null)
+                result = instance.perform(*args)
+                success(job, instance, result, curQueue)
+            } finally {
+                jedis.del(key(WORKER, this.name))
+            }
+        }
+    }
 
-        this.jedis.set(key(WORKER, this.name), statusMsg(curQueue, job))
+    protected void doWithJedis(Closure closure) {
+        Jedis jedis = jedisPool.resource
         try {
-            final Object result
-            this.listenerDelegate.fireEvent(JOB_EXECUTE, this, curQueue, job, instance, null, null)
-            result = instance.perform(* args)
-            success(job, instance, result, curQueue)
+            closure.call jedis
         } finally {
-            this.jedis.del(key(WORKER, this.name))
+            jedisPool.returnResource(jedis)
         }
     }
 
