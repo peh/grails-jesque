@@ -22,7 +22,7 @@ import org.codehaus.groovy.grails.commons.GrailsApplication
 
 class JesqueGrailsPlugin {
 
-    def version = "0.9.2-SNAPSHOT"
+    def version = "0.9.4-SNAPSHOT"
     def grailsVersion = "2.0.0 > *"
     def dependsOn = [redis: "1.3.2 > *"]
     def pluginExcludes = [
