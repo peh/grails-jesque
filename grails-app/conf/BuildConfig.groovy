@@ -30,7 +30,10 @@ grails.project.dependency.resolution = {
         compile('org.apache.commons:commons-pool2:2.2')
         compile('commons-io:commons-io:2.4')
 
-        compile('net.greghaines:jesque:2.0.1')
+        compile 'redis.clients:jedis:2.6.0'
+        compile('net.greghaines:jesque:2.1.0') {
+            excludes 'jedis'
+        }
 
         test("org.spockframework:spock-grails-support:0.7-groovy-2.0") {
             export = false
