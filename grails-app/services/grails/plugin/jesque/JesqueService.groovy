@@ -7,11 +7,7 @@ import net.greghaines.jesque.admin.AdminImpl
 import net.greghaines.jesque.client.Client
 import net.greghaines.jesque.meta.WorkerInfo
 import net.greghaines.jesque.meta.dao.WorkerInfoDAO
-import net.greghaines.jesque.worker.ExceptionHandler
-import net.greghaines.jesque.worker.JobFactory
-import net.greghaines.jesque.worker.Worker
-import net.greghaines.jesque.worker.WorkerEvent
-import net.greghaines.jesque.worker.WorkerListener
+import net.greghaines.jesque.worker.*
 import org.codehaus.groovy.grails.support.PersistenceContextInterceptor
 import org.joda.time.DateTime
 import org.springframework.beans.factory.DisposableBean
@@ -22,6 +18,8 @@ class JesqueService implements DisposableBean {
     static transactional = false
 
     static final int DEFAULT_WORKER_POOL_SIZE = 3
+    public static final String CLASSES_KEY = 'jobs:done:classes'
+    public static final String DONE_COUNT_KEY = 'jobs:done:count'
 
     def grailsApplication
     def jesqueConfig
@@ -303,6 +301,7 @@ class JesqueService implements DisposableBean {
      * @return
      */
     void addMonitorResult(def name, long start, long end, def args = null, boolean success = true) {
+        int expireTime = grailsApplication.config.grails.jesque.monitoringExpire ?: 604800 // 7 days by default
         def obj = [:]
         obj.start = start
         obj.end = end
@@ -315,15 +314,13 @@ class JesqueService implements DisposableBean {
             String jobKey = getDoneKey(next)
             obj.id = next
             obj.each { key, value ->
-                jedis.hset(jobKey, key, "$value")
+                jedis.hset(jobKey, key.toString(), value.toString())
             }
+            jedis.expire(jobKey, expireTime) // 7 days
             jedis.sadd(CLASSES_KEY, "$name")
             jedis.lpush(getClassesDoneKey(name), "$next")
         }
     }
-
-    public static final String CLASSES_KEY = 'jobs:done:classes'
-    public static final String DONE_COUNT_KEY = 'jobs:done:count'
 
     static String getClassesDoneKey(String name) {
         "jobs:done:classes:$name"

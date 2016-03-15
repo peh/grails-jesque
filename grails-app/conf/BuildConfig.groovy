@@ -27,7 +27,7 @@ grails.project.dependency.resolution = {
         mavenRepo "http://m2repo.spockframework.org/snapshots/"
     }
     dependencies {
-        compile('commons-pool:commons-pool:1.6')
+        compile('org.apache.commons:commons-pool2:2.2')
         compile('commons-io:commons-io:2.4')
 
         compile('net.greghaines:jesque:2.0.1')
