@@ -4,24 +4,22 @@ import net.greghaines.jesque.Config
 import net.greghaines.jesque.Job
 import net.greghaines.jesque.worker.JobFactory
 import net.greghaines.jesque.worker.WorkerAware
-import net.greghaines.jesque.worker.WorkerJedisPoolImpl
+import net.greghaines.jesque.worker.WorkerImpl
 import redis.clients.jedis.Jedis
-import redis.clients.util.Pool
 
 import static net.greghaines.jesque.utils.ResqueConstants.WORKER
 import static net.greghaines.jesque.worker.WorkerEvent.JOB_EXECUTE
 import static net.greghaines.jesque.worker.WorkerEvent.JOB_PROCESS
 
-class GrailsWorkerImpl extends WorkerJedisPoolImpl {
+class GrailsWorkerImpl extends WorkerImpl {
 
     JobThrowableHandler jobThrowableHandler
 
     public GrailsWorkerImpl(
             final Config config,
             final Collection<String> queues,
-            final JobFactory jobFactory,
-            final Pool<Jedis> jedisPool) {
-        super(config, queues, jobFactory, jedisPool)
+            final JobFactory jobFactory) {
+        super(config, queues, jobFactory)
     }
 
     @Override
@@ -70,11 +68,10 @@ class GrailsWorkerImpl extends WorkerJedisPoolImpl {
     }
 
     protected void doWithJedis(Closure closure) {
-        Jedis jedis = jedisPool.resource
         try {
             closure.call jedis
         } finally {
-            jedisPool.returnResource(jedis)
+            jedis.close()
         }
     }
 

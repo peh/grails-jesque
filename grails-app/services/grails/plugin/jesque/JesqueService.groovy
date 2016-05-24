@@ -4,15 +4,10 @@ import net.greghaines.jesque.Job
 import net.greghaines.jesque.admin.Admin
 import net.greghaines.jesque.admin.AdminClient
 import net.greghaines.jesque.admin.AdminImpl
-import net.greghaines.jesque.admin.AdminJedisPoolImpl
 import net.greghaines.jesque.client.Client
 import net.greghaines.jesque.meta.WorkerInfo
 import net.greghaines.jesque.meta.dao.WorkerInfoDAO
-import net.greghaines.jesque.worker.ExceptionHandler
-import net.greghaines.jesque.worker.JobFactory
-import net.greghaines.jesque.worker.Worker
-import net.greghaines.jesque.worker.WorkerEvent
-import net.greghaines.jesque.worker.WorkerListener
+import net.greghaines.jesque.worker.*
 import org.codehaus.groovy.grails.support.PersistenceContextInterceptor
 import org.joda.time.DateTime
 import org.springframework.beans.factory.DisposableBean
@@ -124,11 +119,11 @@ class JesqueService implements DisposableBean {
         def customWorkerClass = grailsApplication.config.grails.jesque.custom.worker.clazz
         Worker worker
         if (customWorkerClass && customWorkerClass in GrailsWorkerImpl) {
-            worker = customWorkerClass.newInstance(jesqueConfig, queues, jobFactory, redisService.redisPool)
+            worker = customWorkerClass.newInstance(jesqueConfig, queues, jobFactory)
         } else {
             if (customWorkerClass)
                 log.warn('The specified custom worker class does not extend GrailsWorkerImpl. Ignoring it')
-            worker = new GrailsWorkerImpl(jesqueConfig, queues, jobFactory, redisService.redisPool)
+            worker = new GrailsWorkerImpl(jesqueConfig, queues, jobFactory)
         }
 
         def customListenerClass = grailsApplication.config.grails.jesque.custom.listener.clazz
@@ -155,7 +150,7 @@ class JesqueService implements DisposableBean {
         workers.add(worker)
 
         // create an Admin for this worker (makes it possible to administer across a cluster)
-        Admin admin = new AdminJedisPoolImpl(jesqueConfig, redisService.redisPool)
+        Admin admin = new AdminImpl(jesqueConfig)
         admin.setWorker(worker)
 
         if (!grailsApplication.config.grails.jesque.skipPersistence) {
@@ -321,7 +316,7 @@ class JesqueService implements DisposableBean {
             obj.each { key, value ->
                 jedis.hset(jobKey, key.toString(), value.toString())
             }
-            if(ttl > 0) {
+            if (ttl > 0) {
                 jedis.expire(jobKey, ttl)
             }
             jedis.sadd(CLASSES_KEY, "$name")

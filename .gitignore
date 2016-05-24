@@ -9,3 +9,5 @@ stacktrace.log
 
 out/
 .idea/
+*.zip
+*.sha1

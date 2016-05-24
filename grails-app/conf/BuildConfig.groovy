@@ -1,8 +1,11 @@
 grails.project.class.dir = "target/classes"
 grails.project.test.class.dir = "target/test-classes"
 grails.project.test.reports.dir = "target/test-reports"
-//grails.project.war.file = "target/${appName}-${appVersion}.war"
-grails.project.dependency.resolver = "ivy" // or ivy
+
+grails.project.repos.default = "myRepo"
+grails.project.repos.myRepo.url = "file:///Users/philipp/workspace/admin-uberall/uberall-plugins" // change this your local path if the uberall-plugins repo
+
+grails.project.dependency.resolver = "maven" // or ivy
 grails.project.dependency.resolution = {
     // inherit Grails' default dependencies
     inherits("global") {
@@ -30,10 +33,7 @@ grails.project.dependency.resolution = {
         compile('org.apache.commons:commons-pool2:2.2')
         compile('commons-io:commons-io:2.4')
 
-        compile 'redis.clients:jedis:2.6.0'
-        compile('net.greghaines:jesque:2.1.0') {
-            excludes 'jedis'
-        }
+        compile('net.greghaines:jesque:2.1.1')
 
         test("org.spockframework:spock-grails-support:0.7-groovy-2.0") {
             export = false
@@ -48,12 +48,12 @@ grails.project.dependency.resolution = {
     plugins {
         compile ":redis:1.5.5"
         compile ":joda-time:1.5"
-        
-	build(":release:3.0.1", ":rest-client-builder:1.0.3") {
+
+        build(":release:3.1.2", ":rest-client-builder:2.1.1") {
             export = false
         }
-       
-	test(":spock:0.7") {
+
+        test(":spock:0.7") {
             export = false
             exclude "spock-grails-support"
         }
